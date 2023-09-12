@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+
+# compressor.py
+from subprocess import Popen, PIPE
+
+def compress(value):
+    """Compresses a byte array with the xz binary"""
+
+    process = Popen(["xz", "--compress", "--force"], stdin=PIPE, stdout=PIPE)
+    return process.communicate(value)[0]
+
+def decompress(value):
+    """Decompresses a byte array with the xz binary"""
+
+    process = Popen(["xz", "--decompress", "--stdout", "--force"],
+                    stdin=PIPE, stdout=PIPE)
+    return process.communicate(value)[0]
+
+def compress_file(path):
+    """Compress the file at 'path' with the xz binary"""
+
+    process = Popen(["xz", "--compress", "--force", "--stdout", path], stdout=PIPE)
+    return process.communicate()[0]
+
+# compressor.py
+
+import os
+import sys
+from optparse import OptionParser
+from sys import argv
+import base64
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+from io import BytesIO
+
+from os.path import basename
+from errno import EPIPE
+
+def load():
+    ppds_compressed = base64.b64decode(ppds_compressed_b64)
+    ppds_decompressed = decompress(ppds_compressed)
+    ppds = pickle.loads(ppds_decompressed)
+    return ppds
+
+def ls():
+    binary_name = basename(argv[0])
+    ppds = load()
+    for key, value in ppds.items():
+        if key == 'ARCHIVE': continue
+        for ppd in value[2]:
+            try:
+                print(ppd.replace('"', '"' + binary_name + ':', 1))
+            except IOError as e:
+                # Errors like broken pipes (program which takes the standard
+                # output terminates before this program terminates) should not
+                # generate a traceback.
+                if e.errno == EPIPE: exit(0)
+                raise
+
+def cat(ppd):
+    # Ignore driver's name, take only PPD's
+    ppd = ppd.split(":")[-1]
+    # Remove also the index
+    ppd = "0/" + ppd[ppd.find("/")+1:]
+
+    ppds = load()
+    ppds['ARCHIVE'] = BytesIO(decompress(ppds['ARCHIVE']))
+
+    if ppd in ppds:
+        start = ppds[ppd][0]
+        length = ppds[ppd][1]
+        ppds['ARCHIVE'].seek(start)
+        return ppds['ARCHIVE'].read(length)
+
+def main():
+    usage = "usage: %prog list\n" \
+            "       %prog cat URI"
+    version = "%prog 1.0.2\n" \
+              "Copyright (c) 2013 Vitor Baptista.\n" \
+              "This is free software; see the source for copying conditions.\n" \
+              "There is NO warranty; not even for MERCHANTABILITY or\n" \
+              "FITNESS FOR A PARTICULAR PURPOSE."
+    parser = OptionParser(usage=usage,
+                          version=version)
+    (options, args) = parser.parse_args()
+
+    if len(args) == 0 or len(args) > 2:
+        parser.error("incorrect number of arguments")
+
+    if args[0].lower() == 'list':
+        ls()
+    elif args[0].lower() == 'cat':
+        if not len(args) == 2:
+            parser.error("incorrect number of arguments")
+        ppd = cat(args[1])
+        if not ppd:
+            parser.error("Printer '%s' does not have default driver!" % args[1])
+        try:
+            # avoid any assumption of encoding or system locale; just print the
+            # bytes of the PPD as they are
+            if sys.version_info.major < 3:
+                sys.stdout.write(ppd)
+            else:
+                sys.stdout.buffer.write(ppd)
+        except IOError as e:
+            # Errors like broken pipes (program which takes the standard output
+            # terminates before this program terminates) should not generate a
+            # traceback.
+            if e.errno == EPIPE: exit(0)
+            raise
+    else:
+        parser.error("argument " + args[0] + " invalid")
+
+# PPDs Archive
+ppds_compressed_b64 = b"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"
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        # We don't want a KeyboardInterrupt throwing a
+        # traceback into stdout.
+        pass
