@@ -9,7 +9,9 @@ apt-get install libncurses5-dev libncursesw5-dev
 
 Required Libraries:
 Ncurses Library
-apt-get install libncurses5-dev libncursesw5-dev
+sudo apt-get install libncurses5-dev libncursesw5-dev
+ARM GCC compiler
+sudo apt-get install gcc-arm*
 
 BusyBox menuconfig
-After when running the config.sh script the user is required to change the following setting in BusyBox Configurator "make menuconfig" select Busybox Settings --> Build Options. Within Build Options, check "Build BusyBox as a static binary" using the 'Y' key. Next, set "Cross Compiler prefix" to arm-linux-gnueabihf- Exit the menu, and be sure to save your changes.
+After when running the config.sh script the user is required to change the following setting in BusyBox Configurator "make menuconfig" select Settings --> Build Options, then "Build static binary"  Next, set "Cross Compiler prefix" to arm-linux-gnueabihf- Exit the menu, and be sure to save your changes.
